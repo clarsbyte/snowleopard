@@ -34,53 +34,48 @@ export async function POST(request: NextRequest) {
       apiKey: process.env.SNOWLEOPARD_API_KEY,
     });
 
-    // Query for stock availability
-    const question = `How many of ${item} is currently available in stock?`;
+    // Query for stock availability using the response method
+    const question = `Check the stock of ${item}. Query ${item}. `;
 
-    const response = await client.retrieve(
+    const responseStream = await client.response(
       process.env.SNOWLEOPARD_DATAFILE_ID,
       question
     );
 
-    console.log('SnowLeopard response:', response);
+    console.log('SnowLeopard response stream:', responseStream);
 
-    // Format the response data for display
+    // Consume the async generator stream
     let formattedStockInfo = '';
+    let finalChunk: any = null;
 
-    if (response.data && typeof response.data === 'object') {
-      const data = response.data as any;
+    for await (const chunk of responseStream) {
+      console.log('Chunk received:', chunk);
 
-      // Extract query summary if available
-      if (data.querySummary) {
-        formattedStockInfo += `${data.querySummary}\n\n`;
+      // Store the final result chunk
+      if (chunk.__type__ === 'responseResult') {
+        finalChunk = chunk;
       }
-
-      // Format rows if available
-      if (data.rows && Array.isArray(data.rows)) {
-        if (data.rows.length > 0) {
-          formattedStockInfo += 'Details:\n';
-          data.rows.forEach((row: any, index: number) => {
-            formattedStockInfo += `${index + 1}. ${JSON.stringify(row)}\n`;
-          });
-        } else {
-          formattedStockInfo += 'No stock data found.\n';
-        }
-      }
-
-      // Add trimmed notice if data was limited
-      if (data.isTrimmed) {
-        formattedStockInfo += '\n(Some results may have been trimmed)';
-      }
-    } else {
-      formattedStockInfo = String(response.data || 'No stock information available');
     }
+
+    console.log('Final chunk:', finalChunk);
+
+    // Extract the complete answer from the LLM response
+    if (finalChunk && finalChunk.llmResponse && finalChunk.llmResponse.complete_answer) {
+      formattedStockInfo = finalChunk.llmResponse.complete_answer;
+    } else if (finalChunk && finalChunk.llmResponse && finalChunk.llmResponse.data && finalChunk.llmResponse.data.summary) {
+      formattedStockInfo = finalChunk.llmResponse.data.summary;
+    } else {
+      formattedStockInfo = 'No stock information available';
+    }
+
+    console.log('Final formatted info:', formattedStockInfo);
 
     return NextResponse.json({
       success: true,
       item: item,
       question: question,
       stockInfo: formattedStockInfo.trim(),
-      rawData: response.data,
+      rawData: finalChunk,
       timestamp: new Date().toISOString(),
     });
 

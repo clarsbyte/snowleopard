@@ -42,26 +42,26 @@ export async function POST(request: NextRequest) {
     const prompt = `You are an inventory classification system. Analyze the image and identify which item(s) from our inventory list are present.
 
 INVENTORY LIST:
-- Canned Black Beans
-- Chicken Noodle Soup
-- Boxes of Diapers (Size 4)
-- Children's Multivitamins
-- Winter Coats (Adult M)
-- Shelf-Stable Milk
-- Boxes of Cereal
-- Toothbrush Kits (Adult)
-- Bags of Lay's Chips (Single Serve)
-- Reusable Water Bottles
-- Canned Tuna
-- Bags of Rice (5lb)
-- First-Aid Kits
-- Hand Sanitizer (Bottles)
-- Blankets/Throws
-- Peanut Butter Jars
-- Pasta & Sauce Kits
-- Feminine Hygiene Pads
-- Reading Glasses (+1.5)
-- Backpacks (Small)
+-Canned Black Beans
+-Chicken Noodle Soup
+-Boxes of Diapers
+-Children's Multivitamins
+-Winter Coats
+-Shelf-Stable Milk
+-Boxes of Cereal
+-Toothbrush Kits
+-Lays Chips
+-Reusable Water Bottles
+-Canned Tuna
+-Bags of Rice
+-First-Aid Kits
+-Hand Sanitizer
+-Blankets/Throws
+-Peanut Butter Jars
+-Pasta & Sauce Kits
+-Feminine Hygiene Pads
+-Reading Glasses
+-Backpacks
 
 INSTRUCTIONS:
 1. Carefully examine the image to identify the item(s)
