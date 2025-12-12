@@ -151,7 +151,7 @@ export default function Home() {
           <div className="max-w-6xl mx-auto flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-lime-400 to-emerald-400" />
-              <span className="text-white/90 font-semibold">Olly</span>
+              <span className="text-white/90 font-semibold">Ollie</span>
             </div>
             <nav className="flex items-center gap-2">
               <Link href="/combined" className="btn btn-sm btn-primary">Try Demo</Link>

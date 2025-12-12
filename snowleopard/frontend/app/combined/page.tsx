@@ -474,7 +474,7 @@ export default function CombinedPage() {
 
       transcriberRef.current = transcriber;
 
-      const wakeWord = 'olly';
+      const wakeWord = 'Ollie';
       let wakeWordBuffer = '';
 
       transcriber.on('transcript', (transcript) => {
@@ -483,7 +483,7 @@ export default function CombinedPage() {
 
           // Check for wake word only if not already detected
           if (!wakeWordDetectedRef.current && text.includes(wakeWord)) {
-            console.log('[Wake Word] "Olly" detected! Capturing screenshot...');
+            console.log('[Wake Word] "Ollie" detected! Capturing screenshot...');
             wakeWordDetectedRef.current = true;
             setWakeWordDetected(true);
             setIsRecording(true);
@@ -518,7 +518,7 @@ export default function CombinedPage() {
             }
 
             if (wakeWordBuffer.includes(wakeWord)) {
-              console.log('[Wake Word] "Olly" detected! Capturing screenshot...');
+              console.log('[Wake Word] "Ollie" detected! Capturing screenshot...');
               wakeWordDetectedRef.current = true;
               setWakeWordDetected(true);
               setIsRecording(true);
@@ -674,7 +674,7 @@ export default function CombinedPage() {
       return;
     }
 
-    const cleanedText = finalText.replace(/olly/gi, '').trim();
+    const cleanedText = finalText.replace(/Ollie/gi, '').trim();
 
     if (!cleanedText) {
       setCurrentTranscript('');
@@ -715,7 +715,7 @@ export default function CombinedPage() {
       capturedImageRef.current = null;
     } else {
       console.error('[Finalize] No image available in ref or state');
-        addSystemMessage('Error: No image captured. Please say "Olly" again to capture the image.');
+        addSystemMessage('Error: No image captured. Please say "Ollie" again to capture the image.');
       setTranscriptionPaused(false);
     }
   };
@@ -776,7 +776,7 @@ export default function CombinedPage() {
       <div className="sticky top-0 z-50 backdrop-blur-lg bg-slate-900/50 border-b border-lime-500/20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
-            <h1 className="text-2xl font-semibold text-white">Camera + Voice Assistant</h1>
+            <h1 className="text-2xl font-semibold text-white">Ollie</h1>
             <Link
               href="/"
               className="btn btn-sm btn-outline"
@@ -796,7 +796,7 @@ export default function CombinedPage() {
                 Camera Feed
               </h2>
               <p className="text-gray-400 text-sm">
-                Camera auto-starts. Say "Olly" to capture and query.
+                Camera auto-starts. Say "Ollie" to capture and query.
               </p>
             </div>
 
@@ -864,7 +864,7 @@ export default function CombinedPage() {
                 )}
                 {isListening && !isPlayingAudio && !wakeWordDetected && (
                   <div className="px-3 py-1 rounded-full text-xs font-medium bg-blue-500/20 text-blue-300 border border-blue-500/30">
-                    👂 Listening for "Olly"
+                    👂 Listening for "Ollie"
                   </div>
                 )}
                 {locationName && (
@@ -874,18 +874,8 @@ export default function CombinedPage() {
                 )}
               </div>
 
-              {/* Location Debug Display */}
-              {userLocation && (
-                <div className="mt-3 p-3 bg-slate-800/50 border border-slate-600/50 rounded-lg">
-                  <p className="text-xs font-semibold text-gray-400 mb-2">📍 Location Debug Info:</p>
-                  <div className="space-y-1 text-xs text-gray-300 font-mono">
-                    <p>Lat: {userLocation.latitude.toFixed(6)}</p>
-                    <p>Lng: {userLocation.longitude.toFixed(6)}</p>
-                    {locationName && <p className="text-lime-400">Matched: {locationName}</p>}
-                    {!locationName && <p className="text-yellow-400">Location name not yet matched</p>}
-                  </div>
-                </div>
-              )}
+ 
+              
             </div>
           </div>
 
@@ -928,7 +918,7 @@ export default function CombinedPage() {
                   Voice Transcripts
                 </h2>
                 <p className="text-gray-400 text-sm">
-                  Say "Olly" followed by your question
+                  Say "Ollie" followed by your question
                 </p>
               </div>
               <button
@@ -944,7 +934,7 @@ export default function CombinedPage() {
                 <div className="flex items-center justify-center h-full text-gray-400">
                   <div className="text-center">
                     <div className="text-6xl mb-4">🎤</div>
-                    <p className="text-lg">Say "Olly" to begin</p>
+                    <p className="text-lg">Say "Ollie" to begin</p>
                     <p className="text-sm mt-2">Camera and audio auto-start on page load</p>
                   </div>
                 </div>
