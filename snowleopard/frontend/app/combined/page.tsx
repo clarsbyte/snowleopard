@@ -271,11 +271,18 @@ export default function CombinedPage() {
         body: formData,
       });
 
-      const data = await response.json();
-
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to process enhanced query');
+        let errorMessage = 'Failed to process enhanced query';
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorMessage;
+        } catch {
+          errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+        }
+        throw new Error(errorMessage);
       }
+
+      const data = await response.json();
 
       if (data.success && data.answer) {
         setIdentifiedItem(data.identifiedItem || '');
