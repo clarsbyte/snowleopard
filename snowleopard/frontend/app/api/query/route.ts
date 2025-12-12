@@ -6,7 +6,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { item } = body;
+    const { item, location } = body;
 
     if (!item || item === 'No matching items found') {
       return NextResponse.json(
@@ -34,74 +34,90 @@ export async function POST(request: NextRequest) {
       apiKey: process.env.SNOWLEOPARD_API_KEY,
     });
 
-    // Query for stock availability
-    const question = `How many of ${item} is currently available in stock?`;
+    console.log('Using datafile ID:', process.env.SNOWLEOPARD_DATAFILE_ID);
 
-    const response = await client.retrieve(
-      process.env.SNOWLEOPARD_DATAFILE_ID,
-      question
-    );
+    // Query for stock availability using the response method
+    let question = '';
 
-    console.log('SnowLeopard response:', response);
-
-    // Check if response is an error
-    if ('error' in response) {
-      return NextResponse.json(
-        {
-          error: 'Failed to retrieve stock information',
-          details: (response as any).error || 'Unknown error from SnowLeopard API'
-        },
-        { status: 500 }
-      );
-    }
-
-    // Format the response data for display
-    let formattedStockInfo = '';
-    const responseData = response as any;
-
-    const data = responseData.data || responseData;
-
-    if (data && typeof data === 'object') {
-      // Extract query summary if available
-      if (data.querySummary) {
-        formattedStockInfo += `${data.querySummary}\n\n`;
-      }
-
-      // Format rows if available
-      if (data.rows && Array.isArray(data.rows)) {
-        if (data.rows.length > 0) {
-          formattedStockInfo += 'Details:\n';
-          data.rows.forEach((row: any, index: number) => {
-            formattedStockInfo += `${index + 1}. ${JSON.stringify(row)}\n`;
-          });
-        } else {
-          formattedStockInfo += 'No stock data found.\n';
-        }
-      }
-
-      // Add trimmed notice if data was limited
-      if (data.isTrimmed) {
-        formattedStockInfo += '\n(Some results may have been trimmed)';
-      }
+    if (location && location.name) {
+      // Use the matched donation center address
+      question = `Check the table for the stock of ${item} at ${location.name}. How many are available?`;
+      console.log('Query with matched location:', question);
     } else {
-      formattedStockInfo = String(data || 'No stock information available');
+      question = `Check the stock of ${item}. How many are in stock?`;
     }
+
+    console.log('Sending query to SnowLeopard:', question);
+
+    let responseStream;
+    try {
+      responseStream = await client.response(
+        process.env.SNOWLEOPARD_DATAFILE_ID,
+        question
+      );
+      console.log('SnowLeopard response stream received');
+    } catch (fetchError: any) {
+      if (fetchError.cause && fetchError.cause.code === 'EAI_AGAIN') {
+        throw new Error('Network error: Unable to reach SnowLeopard API. Please check your internet connection and try again.');
+      }
+      throw fetchError;
+    }
+
+    // Consume the async generator stream
+    let formattedStockInfo = '';
+    let finalChunk: any = null;
+
+    for await (const chunk of responseStream) {
+      console.log('Chunk received:', chunk);
+
+      // Store the final result chunk
+      if (chunk.__type__ === 'responseResult') {
+        finalChunk = chunk;
+      }
+    }
+
+    console.log('Final chunk:', finalChunk);
+
+    // Extract the complete answer from the LLM response
+    if (finalChunk && finalChunk.llmResponse && finalChunk.llmResponse.complete_answer) {
+      formattedStockInfo = finalChunk.llmResponse.complete_answer;
+    } else if (finalChunk && finalChunk.llmResponse && finalChunk.llmResponse.data && finalChunk.llmResponse.data.summary) {
+      formattedStockInfo = finalChunk.llmResponse.data.summary;
+    } else {
+      formattedStockInfo = 'No stock information available';
+    }
+
+    console.log('Final formatted info:', formattedStockInfo);
 
     return NextResponse.json({
       success: true,
       item: item,
       question: question,
       stockInfo: formattedStockInfo.trim(),
-      rawData: data,
+      rawData: finalChunk,
       timestamp: new Date().toISOString(),
     });
 
   } catch (error) {
     console.error('Error querying SnowLeopard:', error);
+
+    // Check if it's a 404 error
+    if (error instanceof Error && error.message.includes('404')) {
+      return NextResponse.json(
+        {
+          error: 'SnowLeopard datafile not found',
+          details: 'Please verify your SNOWLEOPARD_DATAFILE_ID in .env.local. The datafile may have been deleted or the ID is incorrect.',
+          datafileId: process.env.SNOWLEOPARD_DATAFILE_ID
+        },
+        { status: 404 }
+      );
+    }
+
     return NextResponse.json(
       {
         error: 'Failed to query stock information',
-        details: error instanceof Error ? error.message : 'Unknown error'
+        details: error instanceof Error ? error.message : 'Unknown error',
+        fullError: JSON.stringify(error, null, 2)
       },
       { status: 500 }
     );

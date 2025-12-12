@@ -7,6 +7,8 @@ export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData();
     const image = formData.get('image') as File;
+    const latitude = formData.get('latitude') as string;
+    const longitude = formData.get('longitude') as string;
 
     if (!image) {
       return NextResponse.json(
@@ -42,26 +44,26 @@ export async function POST(request: NextRequest) {
     const prompt = `You are an inventory classification system. Analyze the image and identify which item(s) from our inventory list are present.
 
 INVENTORY LIST:
-- Canned Black Beans
-- Chicken Noodle Soup
-- Boxes of Diapers (Size 4)
-- Children's Multivitamins
-- Winter Coats (Adult M)
-- Shelf-Stable Milk
-- Boxes of Cereal
-- Toothbrush Kits (Adult)
-- Bags of Lay's Chips (Single Serve)
-- Reusable Water Bottles
-- Canned Tuna
-- Bags of Rice (5lb)
-- First-Aid Kits
-- Hand Sanitizer (Bottles)
-- Blankets/Throws
-- Peanut Butter Jars
-- Pasta & Sauce Kits
-- Feminine Hygiene Pads
-- Reading Glasses (+1.5)
-- Backpacks (Small)
+-Canned Black Beans
+-Chicken Noodle Soup
+-Boxes of Diapers
+-Children's Multivitamins
+-Winter Coats
+-Shelf-Stable Milk
+-Boxes of Cereal
+-Toothbrush Kits
+-Lays Chips
+-Reusable Water Bottles
+-Canned Tuna
+-Bags of Rice
+-First-Aid Kits
+-Hand Sanitizer
+-Blankets/Throws
+-Peanut Butter Jars
+-Pasta & Sauce Kits
+-Feminine Hygiene Pads
+-Reading Glasses
+-Backpacks
 
 INSTRUCTIONS:
 1. Carefully examine the image to identify the item(s)
@@ -79,9 +81,48 @@ RESPONSE FORMAT:
     const response = await result.response;
     const text = response.text();
 
+    // Get location name from coordinates if available
+    let locationName = null;
+    if (latitude && longitude) {
+      try {
+        const locationPrompt = `You are a location matching system. Given GPS coordinates, select the CLOSEST address from this list of donation center locations:
+
+DONATION CENTER LOCATIONS:
+- 880 Mabury Rd, San Jose, CA 95133
+- 1781 Union St, San Francisco, CA 94123
+- 2508 Historic Decatur Rd, San Diego, CA 92106
+- 320 E 43rd St, New York, NY 10017
+
+USER COORDINATES: ${latitude}, ${longitude}
+
+INSTRUCTIONS:
+1. Determine which city/area these coordinates are closest to
+2. Return ONLY the exact address from the list above that is nearest to these coordinates
+3. Return the FULL address exactly as shown in the list
+4. No explanations, no extra text, just the address
+
+RESPONSE FORMAT: Just the address, nothing else.
+Example: "880 Mabury Rd, San Jose, CA 95133"`;
+
+        const locationResult = await model.generateContent(locationPrompt);
+        const locationResponse = await locationResult.response;
+        locationName = locationResponse.text().trim();
+
+        console.log('Matched coordinates to nearest donation center:', locationName);
+      } catch (err) {
+        console.error('Error matching location:', err);
+        locationName = null;
+      }
+    }
+
     return NextResponse.json({
       success: true,
       analysis: text,
+      location: latitude && longitude ? {
+        latitude: parseFloat(latitude),
+        longitude: parseFloat(longitude),
+        name: locationName
+      } : null,
       timestamp: new Date().toISOString(),
     });
 

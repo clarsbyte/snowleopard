@@ -1,154 +1,299 @@
+'use client';
+
 import Link from "next/link";
+import { useEffect, useRef } from 'react';
 
 export default function Home() {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const gl = canvas.getContext('webgl');
+    if (!gl) return;
+
+    let animationId: number;
+    let time = 0;
+
+    const resize = () => {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+      gl.viewport(0, 0, canvas.width, canvas.height);
+    };
+
+    resize();
+    window.addEventListener('resize', resize);
+
+    // Vertex shader
+    const vertexShaderSource = `
+      attribute vec2 position;
+      void main() {
+        gl_Position = vec4(position, 0.0, 1.0);
+      }
+    `;
+
+    // Fragment shader with large, clear blob gradients
+    const fragmentShaderSource = `
+      precision mediump float;
+      uniform float time;
+      uniform vec2 resolution;
+
+      // Blob function - creates soft circular gradients that move
+      float blob(vec2 uv, vec2 center, float radius, float speed, float offsetAngle) {
+        vec2 offset = vec2(
+          sin(time * speed + offsetAngle) * 0.4,
+          cos(time * speed * 0.7 + offsetAngle) * 0.4
+        );
+        float dist = length(uv - center - offset);
+        return 1.0 - smoothstep(0.0, radius, dist);
+      }
+
+      void main() {
+        vec2 uv = gl_FragCoord.xy / resolution;
+        uv = (uv - 0.5) * 2.5;
+        uv.x *= resolution.x / resolution.y;
+
+        // Dark green base background
+        vec3 color = vec3(0.03, 0.12, 0.08);
+
+        // Emerald green blob (top left corner)
+        float blob1 = blob(uv, vec2(-1.2, 0.9), 1.5, 0.25, 0.0);
+        vec3 color1 = vec3(0.15, 0.75, 0.4);
+
+        // Lime/neon yellow blob (top right corner)
+        float blob2 = blob(uv, vec2(1.3, 0.8), 1.4, 0.3, 2.0);
+        vec3 color2 = vec3(0.7, 0.9, 0.2);
+
+        // Teal blob (bottom left corner)
+        float blob3 = blob(uv, vec2(-1.1, -1.0), 1.6, 0.2, 4.0);
+        vec3 color3 = vec3(0.2, 0.7, 0.6);
+
+        // Yellow-green blob (bottom right corner)
+        float blob4 = blob(uv, vec2(1.2, -0.9), 1.3, 0.28, 1.5);
+        vec3 color4 = vec3(0.6, 0.85, 0.3);
+
+        // Mix blobs with additive blending for vibrant overlaps
+        color += color1 * blob1 * 0.5;
+        color += color2 * blob2 * 0.5;
+        color += color3 * blob3 * 0.45;
+        color += color4 * blob4 * 0.45;
+
+        gl_FragColor = vec4(color, 1.0);
+      }
+    `;
+
+    const createShader = (type: number, source: string) => {
+      const shader = gl.createShader(type);
+      if (!shader) return null;
+      gl.shaderSource(shader, source);
+      gl.compileShader(shader);
+      return shader;
+    };
+
+    const vertexShader = createShader(gl.VERTEX_SHADER, vertexShaderSource);
+    const fragmentShader = createShader(gl.FRAGMENT_SHADER, fragmentShaderSource);
+
+    if (!vertexShader || !fragmentShader) return;
+
+    const program = gl.createProgram();
+    if (!program) return;
+
+    gl.attachShader(program, vertexShader);
+    gl.attachShader(program, fragmentShader);
+    gl.linkProgram(program);
+    gl.useProgram(program);
+
+    const positionBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+      -1, -1,
+      1, -1,
+      -1, 1,
+      1, 1,
+    ]), gl.STATIC_DRAW);
+
+    const positionLocation = gl.getAttribLocation(program, 'position');
+    gl.enableVertexAttribArray(positionLocation);
+    gl.vertexAttribPointer(positionLocation, 2, gl.FLOAT, false, 0, 0);
+
+    const timeLocation = gl.getUniformLocation(program, 'time');
+    const resolutionLocation = gl.getUniformLocation(program, 'resolution');
+
+    const render = () => {
+      time += 0.016; // Slightly faster for visible movement
+      gl.uniform1f(timeLocation, time);
+      gl.uniform2f(resolutionLocation, canvas.width, canvas.height);
+      gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+      animationId = requestAnimationFrame(render);
+    };
+
+    render();
+
+    return () => {
+      window.removeEventListener('resize', resize);
+      cancelAnimationFrame(animationId);
+    };
+  }, []);
+
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white">
-      {/* Hero Section */}
-      <section className="px-6 py-20 md:py-32">
-        <div className="max-w-4xl mx-auto text-center">
-          <h1 className="text-5xl md:text-6xl font-light tracking-tight text-slate-900 mb-6">
-            Your inventory, handled automatically.
-          </h1>
-          <p className="text-xl md:text-2xl text-slate-600 mb-12 font-light max-w-2xl mx-auto">
-            See what you have, ask where things are, and restock before you run out.
-          </p>
-          <Link
-            href="/camera"
-            className="inline-flex items-center justify-center px-8 py-4 text-lg font-medium text-white bg-slate-900 rounded-full hover:bg-slate-800 transition-colors shadow-lg hover:shadow-xl"
-          >
-            Try the Demo
-          </Link>
-        </div>
-      </section>
+    <div className="relative min-h-screen overflow-hidden">
+      {/* WebGL Background */}
+      <canvas
+        ref={canvasRef}
+        className="fixed inset-0 w-full h-full -z-10"
+      />
 
-      {/* How It Works Section */}
-      <section className="px-6 py-20 bg-white/50">
-        <div className="max-w-6xl mx-auto">
-          <h2 className="text-3xl md:text-4xl font-light text-slate-900 text-center mb-16">
-            How It Works
-          </h2>
-          <div className="grid md:grid-cols-3 gap-12 md:gap-8">
-            <div className="text-center">
-              <div className="w-20 h-20 mx-auto mb-6 rounded-2xl bg-purple-100 flex items-center justify-center text-4xl">
-                📷
-              </div>
-              <h3 className="text-xl font-medium text-slate-900 mb-3">
-                Scan items with a camera
-              </h3>
-              <p className="text-slate-600 leading-relaxed">
-                Point your camera at any item and instantly identify it in your inventory.
-              </p>
-            </div>
-            <div className="text-center">
-              <div className="w-20 h-20 mx-auto mb-6 rounded-2xl bg-blue-100 flex items-center justify-center text-4xl">
-                🎤
-              </div>
-              <h3 className="text-xl font-medium text-slate-900 mb-3">
-                Ask questions with your voice
-              </h3>
-              <p className="text-slate-600 leading-relaxed">
-                Speak naturally to find items, check stock levels, and get instant answers.
-              </p>
-            </div>
-            <div className="text-center">
-              <div className="w-20 h-20 mx-auto mb-6 rounded-2xl bg-green-100 flex items-center justify-center text-4xl">
-                🔮
-              </div>
-              <h3 className="text-xl font-medium text-slate-900 mb-3">
-                Get smart restock predictions
-              </h3>
-              <p className="text-slate-600 leading-relaxed">
-                AI learns your usage patterns and alerts you before supplies run low.
-              </p>
+      {/* Content */}
+      <div className="relative z-10">
+        {/* Hero Section */}
+        <section className="px-6 py-20 md:py-32 lg:py-40">
+          <div className="max-w-5xl mx-auto text-center">
+            <h1 className="text-5xl md:text-6xl lg:text-7xl font-medium tracking-tight text-white mb-6 leading-tight">
+              Donation management{' '}
+              <span className="bg-gradient-to-r from-green-400 via-lime-400 to-yellow-300 bg-clip-text text-transparent">
+                made effortless
+              </span>
+            </h1>
+            <p className="text-lg md:text-xl lg:text-2xl text-gray-300 mb-12 max-w-3xl mx-auto leading-relaxed">
+              Track, categorize, and distribute donations automatically. Empower your charity to help more people with AI-powered inventory management.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+              <Link
+                href="/camera"
+                className="inline-flex items-center justify-center px-8 py-4 text-lg font-medium text-white bg-white/10 backdrop-blur-sm border border-white/20 rounded-full hover:bg-white/20 transition-all shadow-lg hover:shadow-xl"
+              >
+                Get Started
+              </Link>
+              <button className="inline-flex items-center justify-center px-8 py-4 text-lg font-medium text-white/80 hover:text-white transition-colors">
+                Learn more →
+              </button>
             </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* Key Features Section */}
-      <section className="px-6 py-20">
-        <div className="max-w-6xl mx-auto">
-          <h2 className="text-3xl md:text-4xl font-light text-slate-900 text-center mb-16">
-            Key Features
-          </h2>
-          <div className="grid md:grid-cols-3 gap-8">
-            <div className="p-8 rounded-2xl bg-gradient-to-br from-purple-50 to-pink-50 border border-purple-100">
-              <div className="text-3xl mb-4">✨</div>
-              <h3 className="text-xl font-medium text-slate-900 mb-3">
-                AI item recognition from images
-              </h3>
-              <p className="text-slate-600 leading-relaxed">
-                Advanced computer vision powered by Gemini AI recognizes items instantly from photos.
+        {/* Trusted By Section */}
+        <section className="px-6 py-12 border-y border-white/10">
+          <div className="max-w-6xl mx-auto">
+            <p className="text-center text-gray-400 text-sm mb-8">
+              Trusted by charities and nonprofits making a difference
+            </p>
+          </div>
+        </section>
+
+        {/* Features Section */}
+        <section className="px-6 py-20 md:py-32">
+          <div className="max-w-6xl mx-auto">
+            <div className="mb-16 text-center">
+              <p className="text-sm font-medium text-lime-400 mb-4 tracking-wider uppercase">
+                The Advantage
+              </p>
+              <h2 className="text-3xl md:text-4xl lg:text-5xl font-medium text-white mb-6 max-w-4xl mx-auto leading-tight">
+                Know exactly what you have and where it needs to go
+              </h2>
+              <p className="text-lg md:text-xl text-gray-300 max-w-3xl mx-auto">
+                AI-powered tracking helps you manage donations from intake to distribution, ensuring nothing goes to waste and everyone gets what they need.
               </p>
             </div>
-            <div className="p-8 rounded-2xl bg-gradient-to-br from-blue-50 to-cyan-50 border border-blue-100">
-              <div className="text-3xl mb-4">🗣️</div>
-              <h3 className="text-xl font-medium text-slate-900 mb-3">
-                Voice assistant to find and check items
-              </h3>
-              <p className="text-slate-600 leading-relaxed">
-                Natural language queries let you search inventory like talking to a friend.
-              </p>
-            </div>
-            <div className="p-8 rounded-2xl bg-gradient-to-br from-green-50 to-emerald-50 border border-green-100">
-              <div className="text-3xl mb-4">📊</div>
-              <h3 className="text-xl font-medium text-slate-900 mb-3">
-                Predictive alerts based on usage patterns
-              </h3>
-              <p className="text-slate-600 leading-relaxed">
-                Machine learning analyzes historical data to forecast when you'll need to restock.
-              </p>
+
+            <div className="grid md:grid-cols-3 gap-6 lg:gap-8 mt-16">
+              <div className="p-8 rounded-2xl bg-white/5 backdrop-blur-sm border border-white/10 hover:bg-white/10 transition-all">
+                <div className="text-4xl mb-4">📷</div>
+                <h3 className="text-xl font-medium text-white mb-3">
+                  Instant item recognition
+                </h3>
+                <p className="text-gray-400 leading-relaxed">
+                  Simply scan donated items with your camera. AI instantly identifies and categorizes them into your inventory.
+                </p>
+              </div>
+
+              <div className="p-8 rounded-2xl bg-white/5 backdrop-blur-sm border border-white/10 hover:bg-white/10 transition-all">
+                <div className="text-4xl mb-4">💬</div>
+                <h3 className="text-xl font-medium text-white mb-3">
+                  Ask about availability
+                </h3>
+                <p className="text-gray-400 leading-relaxed">
+                  "Do we have winter coats?" "How many diapers are left?" Get instant answers about what's in stock.
+                </p>
+              </div>
+
+              <div className="p-8 rounded-2xl bg-white/5 backdrop-blur-sm border border-white/10 hover:bg-white/10 transition-all">
+                <div className="text-4xl mb-4">📊</div>
+                <h3 className="text-xl font-medium text-white mb-3">
+                  Track what matters
+                </h3>
+                <p className="text-gray-400 leading-relaxed">
+                  Monitor donation trends, identify needs, and ensure critical items are always stocked.
+                </p>
+              </div>
             </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* Use Cases Section */}
-      <section className="px-6 py-20 bg-slate-50/50">
-        <div className="max-w-6xl mx-auto">
-          <h2 className="text-3xl md:text-4xl font-light text-slate-900 text-center mb-16">
-            Use Cases
-          </h2>
-          <div className="grid md:grid-cols-3 gap-8">
-            <div className="p-10 rounded-2xl bg-white border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
-              <div className="text-4xl mb-4">🏠</div>
-              <h3 className="text-2xl font-light text-slate-900 mb-3">
-                Smart pantry
-              </h3>
-              <p className="text-slate-600 leading-relaxed">
-                Never wonder what's in your pantry again. Scan items as you add them and get alerts before you run out of essentials.
-              </p>
-            </div>
-            <div className="p-10 rounded-2xl bg-white border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
-              <div className="text-4xl mb-4">📦</div>
-              <h3 className="text-2xl font-light text-slate-900 mb-3">
-                Small warehouse
-              </h3>
-              <p className="text-slate-600 leading-relaxed">
-                Track inventory across multiple locations. Ask "where are the diapers?" and get instant location and stock info.
-              </p>
-            </div>
-            <div className="p-10 rounded-2xl bg-white border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
-              <div className="text-4xl mb-4">🏢</div>
-              <h3 className="text-2xl font-light text-slate-900 mb-3">
-                Shared office or storage space
-              </h3>
-              <p className="text-slate-600 leading-relaxed">
-                Keep track of shared supplies. Know what's available, where it is, and when to reorder.
-              </p>
+        {/* Use Cases Section */}
+        <section className="px-6 py-20 md:py-32">
+          <div className="max-w-6xl mx-auto">
+            <h2 className="text-3xl md:text-4xl font-medium text-white text-center mb-16">
+              Built for nonprofits of all sizes
+            </h2>
+            <div className="grid md:grid-cols-3 gap-6 lg:gap-8">
+              <div className="p-10 rounded-2xl bg-gradient-to-br from-green-500/10 to-lime-500/10 border border-green-500/20 backdrop-blur-sm hover:scale-105 transition-transform">
+                <div className="text-4xl mb-4">🏠</div>
+                <h3 className="text-2xl font-medium text-white mb-3">
+                  Food banks
+                </h3>
+                <p className="text-gray-300 leading-relaxed">
+                  Track perishables, monitor expiration dates, and ensure families get the food they need before it expires.
+                </p>
+              </div>
+
+              <div className="p-10 rounded-2xl bg-gradient-to-br from-lime-500/10 to-yellow-500/10 border border-lime-500/20 backdrop-blur-sm hover:scale-105 transition-transform">
+                <div className="text-4xl mb-4">📦</div>
+                <h3 className="text-2xl font-medium text-white mb-3">
+                  Donation centers
+                </h3>
+                <p className="text-gray-300 leading-relaxed">
+                  Organize clothing, furniture, and household items. Know exactly what's available for those in need.
+                </p>
+              </div>
+
+              <div className="p-10 rounded-2xl bg-gradient-to-br from-emerald-500/10 to-teal-500/10 border border-emerald-500/20 backdrop-blur-sm hover:scale-105 transition-transform">
+                <div className="text-4xl mb-4">🏥</div>
+                <h3 className="text-2xl font-medium text-white mb-3">
+                  Relief organizations
+                </h3>
+                <p className="text-gray-300 leading-relaxed">
+                  Manage emergency supplies, medical items, and essential goods during disaster response efforts.
+                </p>
+              </div>
             </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* Footer */}
-      <footer className="px-6 py-16 border-t border-slate-200">
-        <div className="max-w-6xl mx-auto text-center">
-          <p className="text-xl font-light text-slate-600">
-            Smarter inventory, less guessing.
-          </p>
-        </div>
-      </footer>
+        {/* CTA Section */}
+        <section className="px-6 py-20 md:py-32">
+          <div className="max-w-4xl mx-auto text-center">
+            <h2 className="text-3xl md:text-4xl lg:text-5xl font-medium text-white mb-6">
+              Help more people. Waste less. Track smarter.
+            </h2>
+            <Link
+              href="/camera"
+              className="inline-flex items-center justify-center px-8 py-4 text-lg font-medium text-slate-900 bg-gradient-to-r from-green-400 via-lime-400 to-yellow-300 rounded-full hover:from-green-500 hover:via-lime-500 hover:to-yellow-400 transition-all shadow-lg hover:shadow-xl"
+            >
+              Try the Demo →
+            </Link>
+          </div>
+        </section>
+
+        {/* Footer */}
+        <footer className="px-6 py-16 border-t border-white/10">
+          <div className="max-w-6xl mx-auto text-center">
+            <p className="text-lg text-gray-400">
+              Built with AI-powered automation
+            </p>
+          </div>
+        </footer>
+      </div>
     </div>
   );
 }
