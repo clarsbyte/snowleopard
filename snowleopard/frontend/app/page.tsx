@@ -12,12 +12,20 @@ export default function Home() {
           <p className="text-xl md:text-2xl text-slate-600 mb-12 font-light max-w-2xl mx-auto">
             See what you have, ask where things are, and restock before you run out.
           </p>
-          <Link
-            href="/camera"
-            className="inline-flex items-center justify-center px-8 py-4 text-lg font-medium text-white bg-slate-900 rounded-full hover:bg-slate-800 transition-colors shadow-lg hover:shadow-xl"
-          >
-            Try the Demo
-          </Link>
+          <div className="flex gap-4 justify-center flex-wrap">
+            <Link
+              href="/camera"
+              className="inline-flex items-center justify-center px-8 py-4 text-lg font-medium text-white bg-slate-900 rounded-full hover:bg-slate-800 transition-colors shadow-lg hover:shadow-xl"
+            >
+              Try the Demo
+            </Link>
+            <Link
+              href="/voice"
+              className="inline-flex items-center justify-center px-8 py-4 text-lg font-medium text-slate-900 bg-white border-2 border-slate-900 rounded-full hover:bg-slate-50 transition-colors shadow-lg hover:shadow-xl"
+            >
+              Test Voice Query
+            </Link>
+          </div>
         </div>
       </section>
 

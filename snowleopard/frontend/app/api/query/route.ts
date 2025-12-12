@@ -6,11 +6,17 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { item } = body;
+    const { item, query } = body;
 
-    if (!item || item === 'No matching items found') {
+    // We accept `query` always for voice/text input, and keep `item` for backward compatibility.
+    const effectiveItem =
+      typeof query === 'string' && query.trim()
+        ? query.trim()
+        : item;
+
+    if (!effectiveItem || effectiveItem === 'No matching items found') {
       return NextResponse.json(
-        { error: 'No valid item provided' },
+        { success: false, error: 'No valid query/item provided', answer: 'No valid query/item provided' },
         { status: 400 }
       );
     }
@@ -34,8 +40,8 @@ export async function POST(request: NextRequest) {
       apiKey: process.env.SNOWLEOPARD_API_KEY,
     });
 
-    // Query for stock availability
-    const question = `How many of ${item} is currently available in stock?`;
+    // Query for stock availability (canonical question format for SnowLeopard)
+    const question = `How many of ${effectiveItem} is currently available in stock?`;
 
     const response = await client.retrieve(
       process.env.SNOWLEOPARD_DATAFILE_ID,
@@ -59,9 +65,14 @@ export async function POST(request: NextRequest) {
     let formattedStockInfo = '';
     const responseData = response as any;
 
-    const data = responseData.data || responseData;
+    // Extract data from response, but guard against null/undefined data
+    // If responseData.data is null/undefined, treat as no data (don't fall back to envelope)
+    const data = responseData.data !== undefined && responseData.data !== null
+      ? responseData.data
+      : null;
 
-    if (data && typeof data === 'object') {
+    // Only process if we have valid data (not null/undefined)
+    if (data !== null && data !== undefined && typeof data === 'object') {
       // Extract query summary if available
       if (data.querySummary) {
         formattedStockInfo += `${data.querySummary}\n\n`;
@@ -84,14 +95,17 @@ export async function POST(request: NextRequest) {
         formattedStockInfo += '\n(Some results may have been trimmed)';
       }
     } else {
-      formattedStockInfo = String(data || 'No stock information available');
+      // Handle null/undefined data or non-object data
+      formattedStockInfo = 'No stock information available';
     }
 
     return NextResponse.json({
       success: true,
-      item: item,
+      item: effectiveItem,
       question: question,
       stockInfo: formattedStockInfo.trim(),
+      // Voice UI expects `answer`; use the same formatted response.
+      answer: formattedStockInfo.trim(),
       rawData: data,
       timestamp: new Date().toISOString(),
     });
@@ -100,7 +114,9 @@ export async function POST(request: NextRequest) {
     console.error('Error querying SnowLeopard:', error);
     return NextResponse.json(
       {
+        success: false,
         error: 'Failed to query stock information',
+        answer: 'Failed to query stock information',
         details: error instanceof Error ? error.message : 'Unknown error'
       },
       { status: 500 }
