@@ -40,16 +40,15 @@ body {
   }
 }
 
-/* Prevent pull-to-refresh on iOS */
-html, body {
+/* Prevent pull-to-refresh on iOS while allowing scroll */
+html {
   overscroll-behavior-y: contain;
   height: 100%;
   width: 100%;
-  position: fixed;
-  overflow: hidden;
 }
 
-#__next {
+body {
+  overscroll-behavior-y: contain;
   height: 100%;
   width: 100%;
   overflow-y: auto;

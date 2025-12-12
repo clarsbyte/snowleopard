@@ -14,6 +14,8 @@ export async function POST(request: NextRequest) {
     const latitude = formData.get('latitude') as string;
     const longitude = formData.get('longitude') as string;
 
+    console.log('[Enhanced Query] Received coordinates:', { latitude, longitude });
+
     if (!image) {
       return NextResponse.json(
         { error: 'No image provided' },
@@ -51,87 +53,7 @@ export async function POST(request: NextRequest) {
       },
     };
 
-    // Use Gemini Vision API to process both image and transcript together
-    const enhancedPrompt = `You are an intelligent inventory assistant that combines visual and voice information.
-
-INVENTORY LIST:
--Canned Black Beans
--Chicken Noodle Soup
--Boxes of Diapers
--Children's Multivitamins
--Winter Coats
--Shelf-Stable Milk
--Boxes of Cereal
--Toothbrush Kits
--Lays Chips
--Reusable Water Bottles
--Canned Tuna
--Bags of Rice
--First-Aid Kits
--Hand Sanitizer
--Blankets/Throws
--Peanut Butter Jars
--Pasta & Sauce Kits
--Feminine Hygiene Pads
--Reading Glasses
--Backpacks
-
-IMAGE: See the attached image
-VOICE QUERY: "${transcript}"
-
-TASK:
-1. Analyze the image to identify which item(s) from the inventory list are visible
-2. Analyze the voice query to understand what the user is asking (e.g., stock level, expiry date, location)
-3. Combine both pieces of information to create a precise query
-
-INSTRUCTIONS:
-- If the image shows an item and the query asks about it (e.g., "what's the stock of this"), identify the item from the image
-- If the image shows an item and the query asks about a different item, prioritize the voice query
-- If the query mentions "this", "these", "that item", use the visual information
-- Extract the query intent: stock level, expiry date, availability, location, etc.
-- Match items to the EXACT names in the inventory list above
-
-RESPONSE FORMAT (JSON):
-{
-  "identifiedItem": "Exact item name from list or 'No matching items found'",
-  "queryIntent": "Brief description of what user is asking (e.g., 'stock level', 'expiry date', 'availability')",
-  "enhancedQuery": "Natural language query combining visual and voice context (e.g., 'Check stock of Lays Chips', 'What is the expiry date of Canned Black Beans')"
-}
-
-Return ONLY valid JSON, no other text.`;
-
-    const result = await model.generateContent([enhancedPrompt, imagePart]);
-    const response = await result.response;
-    const text = response.text();
-
-    console.log('[Enhanced Query] Gemini Vision response:', text);
-
-    // Parse the JSON response
-    let parsedResponse: {
-      identifiedItem: string;
-      queryIntent: string;
-      enhancedQuery: string;
-    };
-
-    try {
-      // Extract JSON from the response (handle markdown code blocks)
-      const jsonMatch = text.match(/```json\s*([\s\S]*?)\s*```/) || text.match(/\{[\s\S]*\}/);
-      const jsonText = jsonMatch ? (jsonMatch[1] || jsonMatch[0]) : text;
-      parsedResponse = JSON.parse(jsonText.trim());
-    } catch (parseError) {
-      console.error('[Enhanced Query] Failed to parse Gemini response as JSON:', text);
-      return NextResponse.json(
-        {
-          error: 'Failed to parse enhanced query response',
-          details: 'Gemini did not return valid JSON'
-        },
-        { status: 500 }
-      );
-    }
-
-    const { identifiedItem, queryIntent, enhancedQuery } = parsedResponse;
-
-    // Get location name from coordinates if available
+    // Get location name from coordinates if available (separate call for reliability)
     let locationName = null;
     if (latitude && longitude) {
       try {
@@ -164,6 +86,94 @@ Example: "880 Mabury Rd, San Jose, CA 95133"`;
         locationName = null;
       }
     }
+
+    // Prepare location context if we successfully matched a location
+    let locationContext = '';
+    if (locationName) {
+      locationContext = `
+USER LOCATION: ${locationName}
+
+LOCATION INSTRUCTIONS:
+- Include the location in the "enhancedQuery" (e.g., "Check stock of [Item] at ${locationName}")
+- Return the address in the "matchedLocation" field
+`;
+    }
+
+    // Use Gemini Vision API to process image, transcript, and location together
+    const enhancedPrompt = `You are an intelligent inventory assistant that combines visual, voice, and location information.
+
+INVENTORY LIST:
+-Canned Black Beans
+-Chicken Noodle Soup
+-Boxes of Diapers
+-Children's Multivitamins
+-Winter Coats
+-Shelf-Stable Milk
+-Boxes of Cereal
+-Toothbrush Kits
+-Lays Chips
+-Reusable Water Bottles
+-Canned Tuna
+-Bags of Rice
+-First-Aid Kits
+-Hand Sanitizer
+-Blankets/Throws
+-Peanut Butter Jars
+-Pasta & Sauce Kits
+-Feminine Hygiene Pads
+-Reading Glasses
+-Backpacks
+
+IMAGE: See the attached image
+VOICE QUERY: "${transcript}"
+${locationContext}
+
+TASK:
+1. Analyze the image to identify which item(s) from the inventory list are visible
+2. Analyze the voice query to understand what the user is asking
+3. Consider the user's location (if provided) to make the query specific to that donation center
+4. Combine all information to create a precise query
+
+INSTRUCTIONS:
+- If the image shows an item and the query asks about it, identify the item
+- If the query mentions "this", "these", "that item", use the visual information
+- Match items to the EXACT names in the inventory list above
+- If a location is matched, explicitly include "at [Address]" in the enhancedQuery
+
+RESPONSE FORMAT (JSON):
+{
+  "identifiedItem": "Exact item name from list or 'No matching items found'",
+  "queryIntent": "Brief description of what user is asking",
+  "enhancedQuery": "Natural language query combining visual, voice, and location context"
+}
+
+Return ONLY valid JSON, no other text.`;
+
+    const result = await model.generateContent([enhancedPrompt, imagePart]);
+    const response = await result.response;
+    const text = response.text();
+    console.log('[Enhanced Query] Gemini Vision response:', text);
+
+    // Parse the JSON response
+    let parsedResponse: {
+      identifiedItem: string;
+      queryIntent: string;
+      enhancedQuery: string;
+    };
+
+    try {
+      // Extract JSON from the response (handle markdown code blocks)
+      const jsonMatch = text.match(/```json\s*([\s\S]*?)\s*```/) || text.match(/\{[\s\S]*\}/);
+      const jsonText = jsonMatch ? (jsonMatch[1] || jsonMatch[0]) : text;
+      parsedResponse = JSON.parse(jsonText.trim());
+    } catch (parseError) {
+      console.error('[Enhanced Query] Failed to parse Gemini response as JSON:', text);
+      throw new Error('Failed to parse enhanced query response');
+    }
+
+    const { identifiedItem, queryIntent, enhancedQuery } = parsedResponse;
+    // Use the locationName we determined earlier (not from Gemini's response)
+
 
     // If no matching item found, return early
     if (!identifiedItem || identifiedItem === 'No matching items found') {
@@ -206,14 +216,8 @@ Example: "880 Mabury Rd, San Jose, CA 95133"`;
     console.log('[Enhanced Query] Using datafile ID:', process.env.SNOWLEOPARD_DATAFILE_ID);
 
     // Construct the final question for SnowLeopard
-    let question = '';
-
-    if (locationName) {
-      question = `${enhancedQuery} at ${locationName}`;
-      console.log('[Enhanced Query] Query with matched location:', question);
-    } else {
-      question = enhancedQuery;
-    }
+    const question = enhancedQuery;
+    console.log('[Enhanced Query] Final question for SnowLeopard:', question);
 
     console.log('[Enhanced Query] Sending query to SnowLeopard:', question);
 
@@ -260,7 +264,7 @@ Example: "880 Mabury Rd, San Jose, CA 95133"`;
       success: true,
       identifiedItem,
       queryIntent,
-      enhancedQuery,
+      enhancedQuery: question,
       location: latitude && longitude ? {
         latitude: parseFloat(latitude),
         longitude: parseFloat(longitude),

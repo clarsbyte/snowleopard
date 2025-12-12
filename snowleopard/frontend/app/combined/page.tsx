@@ -18,6 +18,7 @@ export default function CombinedPage() {
   const [isCameraActive, setIsCameraActive] = useState(false);
   const [cameraError, setCameraError] = useState<string>('');
   const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
+  const userLocationRef = useRef<{ latitude: number; longitude: number } | null>(null);
   const [locationName, setLocationName] = useState<string>('');
 
   // Voice state
@@ -48,16 +49,27 @@ export default function CombinedPage() {
   const [enhancedQuery, setEnhancedQuery] = useState<string>('');
   const [finalAnswer, setFinalAnswer] = useState<string>('');
 
-  // Auto-scroll transcripts
-  useEffect(() => {
-    transcriptEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [transcripts, currentTranscript]);
+  // Auto-scroll disabled - user can scroll freely
+  const transcriptContainerRef = useRef<HTMLDivElement>(null);
+  // useEffect(() => {
+  //   transcriptEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  // }, [transcripts, currentTranscript]);
 
-  // Auto-start camera and audio on mount
+  // Auto-start camera and audio on mount (wait for location first)
+  const hasInitialized = useRef(false);
   useEffect(() => {
-    startCamera();
-    getUserLocation();
-    startListening();
+    if (hasInitialized.current) return;
+    hasInitialized.current = true;
+
+    const initialize = async () => {
+      console.log('[Init] Starting initialization...');
+      await getUserLocation();
+      console.log('[Init] Location obtained, starting camera and audio...');
+      startCamera();
+      startListening();
+    };
+
+    initialize();
 
     return () => {
       stopCamera();
@@ -96,21 +108,30 @@ export default function CombinedPage() {
 
   // ==================== Camera Functions ====================
 
-  const getUserLocation = () => {
-    if ('geolocation' in navigator) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          setUserLocation({
-            latitude: position.coords.latitude,
-            longitude: position.coords.longitude,
-          });
-          console.log('User location obtained:', position.coords.latitude, position.coords.longitude);
-        },
-        (error) => {
-          console.error('Error getting location:', error);
-        }
-      );
-    }
+  const getUserLocation = (): Promise<void> => {
+    return new Promise((resolve) => {
+      if ('geolocation' in navigator) {
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            const location = {
+              latitude: position.coords.latitude,
+              longitude: position.coords.longitude,
+            };
+            setUserLocation(location);
+            userLocationRef.current = location; // Store in ref immediately
+            console.log('[Location] User location obtained:', position.coords.latitude, position.coords.longitude);
+            resolve();
+          },
+          (error) => {
+            console.error('[Location] Error getting location:', error);
+            resolve(); // Resolve anyway so app continues
+          }
+        );
+      } else {
+        console.warn('[Location] Geolocation not available in browser');
+        resolve();
+      }
+    });
   };
 
   const startCamera = async () => {
@@ -256,14 +277,22 @@ export default function CombinedPage() {
   const processEnhancedQuery = async (imageBlob: Blob, transcript: string) => {
     try {
       console.log('[Enhanced Query] Starting processing with image size:', imageBlob.size, 'and transcript:', transcript);
+
+      // Use ref instead of state for more reliable location access
+      const location = userLocationRef.current;
+      console.log('[Enhanced Query] User location from ref:', location);
+
       const formData = new FormData();
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
       formData.append('image', imageBlob, `combined-${timestamp}.png`);
       formData.append('transcript', transcript);
 
-      if (userLocation) {
-        formData.append('latitude', userLocation.latitude.toString());
-        formData.append('longitude', userLocation.longitude.toString());
+      if (location) {
+        formData.append('latitude', location.latitude.toString());
+        formData.append('longitude', location.longitude.toString());
+        console.log('[Enhanced Query] Including location in request:', location);
+      } else {
+        console.warn('[Enhanced Query] User location not available - query will not be location-specific');
       }
 
       const response = await fetch('/api/enhanced-query', {
@@ -528,6 +557,7 @@ export default function CombinedPage() {
             }
 
             if (transcriptText.trim()) {
+              // Replace current transcript instead of appending (transcription service sends full text)
               setCurrentTranscript(transcriptText);
 
               // Reset silence timer
@@ -843,6 +873,19 @@ export default function CombinedPage() {
                   </div>
                 )}
               </div>
+
+              {/* Location Debug Display */}
+              {userLocation && (
+                <div className="mt-3 p-3 bg-slate-800/50 border border-slate-600/50 rounded-lg">
+                  <p className="text-xs font-semibold text-gray-400 mb-2">📍 Location Debug Info:</p>
+                  <div className="space-y-1 text-xs text-gray-300 font-mono">
+                    <p>Lat: {userLocation.latitude.toFixed(6)}</p>
+                    <p>Lng: {userLocation.longitude.toFixed(6)}</p>
+                    {locationName && <p className="text-lime-400">Matched: {locationName}</p>}
+                    {!locationName && <p className="text-yellow-400">Location name not yet matched</p>}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
@@ -896,7 +939,7 @@ export default function CombinedPage() {
               </button>
             </div>
 
-            <div className="h-[40vh] overflow-y-auto p-6">
+            <div ref={transcriptContainerRef} className="h-[40vh] overflow-y-auto p-6">
               {transcripts.length === 0 && !currentTranscript ? (
                 <div className="flex items-center justify-center h-full text-gray-400">
                   <div className="text-center">

@@ -206,7 +206,7 @@ export default function Home() {
             </div>
 
             <div className="grid md:grid-cols-3 gap-6 lg:gap-8 mt-16">
-              <Link href="/camera" className="p-8 rounded-2xl bg-white/5 backdrop-blur-sm border border-white/10 hover:bg-white/10 transition-all hover:scale-[1.02]">
+              <Link href="/combined" className="p-8 rounded-2xl bg-white/5 backdrop-blur-sm border border-white/10 hover:bg-white/10 transition-all hover:scale-[1.02]">
                 <div className="text-4xl mb-4">📷</div>
                 <h3 className="text-xl font-medium text-white mb-3">
                   Instant item recognition
