@@ -459,22 +459,18 @@ export default function VoicePage() {
             
             // Only add non-empty text
             if (transcriptText.trim()) {
-              setCurrentTranscript((prev) => {
-                const newText = prev ? prev + ' ' + transcriptText : transcriptText;
-                
-                // Reset silence timer
-                if (silenceTimerRef.current) {
-                  clearTimeout(silenceTimerRef.current);
-                }
+              setCurrentTranscript(transcriptText);
 
-                silenceTimerRef.current = setTimeout(() => {
-                  if (newText.trim()) {
-                    finalizeTranscript(newText.trim());
-                  }
-                }, 2000);
-                
-                return newText;
-              });
+              // Reset silence timer
+              if (silenceTimerRef.current) {
+                clearTimeout(silenceTimerRef.current);
+              }
+
+              silenceTimerRef.current = setTimeout(() => {
+                if (transcriptText.trim()) {
+                  finalizeTranscript(transcriptText.trim());
+                }
+              }, 2000);
             }
           }
         }
@@ -677,14 +673,14 @@ export default function VoicePage() {
         <div className="max-w-4xl mx-auto flex items-center justify-between">
           <Link
             href="/"
-            className="text-slate-600 hover:text-slate-900 transition-colors"
+            className="btn btn-sm btn-outline"
           >
             ← Back to Home
           </Link>
           <h1 className="text-2xl font-light text-slate-900">Voice Query</h1>
           <button
             onClick={clearTranscripts}
-            className="px-4 py-2 text-sm text-slate-600 hover:text-slate-900 border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors"
+            className="btn btn-sm btn-outline text-slate-700 hover:text-slate-900 border-slate-300"
           >
             Clear
           </button>
@@ -791,7 +787,7 @@ export default function VoicePage() {
           {!isListening ? (
             <button
               onClick={startListening}
-              className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium flex items-center gap-2"
+              className="btn btn-md btn-success"
             >
               <span>🎤</span>
               Start Listening
@@ -799,7 +795,7 @@ export default function VoicePage() {
           ) : (
             <button
               onClick={stopListening}
-              className="px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium flex items-center gap-2"
+              className="btn btn-md btn-danger"
             >
               <span>⏹️</span>
               Stop Listening
@@ -820,7 +816,7 @@ export default function VoicePage() {
           <button
             type="submit"
             disabled={isLoading || !inputText.trim()}
-            className="px-6 py-3 bg-slate-900 text-white rounded-lg hover:bg-slate-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+            className="btn btn-md btn-outline bg-slate-900/90 hover:bg-slate-900 text-white disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isLoading ? 'Sending...' : 'Send'}
           </button>

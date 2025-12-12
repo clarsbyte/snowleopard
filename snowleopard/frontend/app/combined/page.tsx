@@ -521,22 +521,18 @@ export default function CombinedPage() {
             }
 
             if (transcriptText.trim()) {
-              setCurrentTranscript((prev) => {
-                const newText = prev ? prev + ' ' + transcriptText : transcriptText;
+              setCurrentTranscript(transcriptText);
 
-                // Reset silence timer
-                if (silenceTimerRef.current) {
-                  clearTimeout(silenceTimerRef.current);
+              // Reset silence timer
+              if (silenceTimerRef.current) {
+                clearTimeout(silenceTimerRef.current);
+              }
+
+              silenceTimerRef.current = setTimeout(() => {
+                if (transcriptText.trim()) {
+                  finalizeTranscript(transcriptText.trim());
                 }
-
-                silenceTimerRef.current = setTimeout(() => {
-                  if (newText.trim()) {
-                    finalizeTranscript(newText.trim());
-                  }
-                }, 2000);
-
-                return newText;
-              });
+              }, 2000);
             }
           }
         }
@@ -746,7 +742,7 @@ export default function CombinedPage() {
             <h1 className="text-2xl font-semibold text-white">Camera + Voice Assistant</h1>
             <Link
               href="/"
-              className="text-lime-300 hover:text-lime-200 transition-colors"
+              className="btn btn-sm btn-outline"
             >
               ← Back Home
             </Link>
@@ -809,18 +805,14 @@ export default function CombinedPage() {
                 <button
                   onClick={isCameraActive ? stopCamera : startCamera}
                   disabled={isProcessingEnhanced}
-                  className="flex-1 bg-white/5 hover:bg-white/10 disabled:bg-gray-800 disabled:cursor-not-allowed text-white font-medium py-3 px-6 rounded-xl transition-all border border-white/10"
+                  className="btn btn-md btn-outline flex-1"
                 >
                   {isCameraActive ? '⏹ Stop Camera' : '▶ Start Camera'}
                 </button>
                 <button
                   onClick={isListening ? stopListening : startListening}
                   disabled={isProcessingEnhanced}
-                  className={`flex-1 font-medium py-3 px-6 rounded-xl transition-all ${
-                    isListening
-                      ? 'bg-red-600 hover:bg-red-700 text-white'
-                      : 'bg-green-600 hover:bg-green-700 text-white'
-                  } disabled:opacity-50 disabled:cursor-not-allowed`}
+                  className={`btn btn-md flex-1 ${isListening ? 'btn-danger' : 'btn-success'} disabled:opacity-50 disabled:cursor-not-allowed`}
                 >
                   {isListening ? '⏹ Stop Listening' : '🎤 Start Listening'}
                 </button>
@@ -891,7 +883,7 @@ export default function CombinedPage() {
               </div>
               <button
                 onClick={clearTranscripts}
-                className="px-4 py-2 text-sm text-gray-300 hover:text-white border border-white/20 rounded-lg hover:bg-white/10 transition-colors"
+                className="btn btn-sm btn-outline"
               >
                 Clear
               </button>

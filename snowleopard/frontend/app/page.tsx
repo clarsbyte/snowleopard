@@ -146,6 +146,20 @@ export default function Home() {
 
       {/* Content */}
       <div className="relative z-10">
+        {/* Top Nav */}
+        <header className="px-6 py-5">
+          <div className="max-w-6xl mx-auto flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-lime-400 to-emerald-400" />
+              <span className="text-white/90 font-semibold">SnowLeopard</span>
+            </div>
+            <nav className="hidden sm:flex items-center gap-2">
+              <Link href="/camera" className="btn btn-sm btn-outline">Camera</Link>
+              <Link href="/voice" className="btn btn-sm btn-outline">Voice</Link>
+              <Link href="/combined" className="btn btn-sm btn-primary">Try Demo</Link>
+            </nav>
+          </div>
+        </header>
         {/* Hero Section */}
         <section className="px-6 py-20 md:py-32 lg:py-40">
           <div className="max-w-5xl mx-auto text-center">
@@ -159,15 +173,12 @@ export default function Home() {
               Track, categorize, and distribute donations automatically. Empower your charity to help more people with AI-powered inventory management.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-              <Link
-                href="/combined"
-                className="inline-flex items-center justify-center px-8 py-4 text-lg font-medium text-white bg-white/10 backdrop-blur-sm border border-white/20 rounded-full hover:bg-white/20 transition-all shadow-lg hover:shadow-xl"
-              >
-                Get Started
+              <Link href="/combined" className="btn btn-lg btn-primary shadow-lg hover:shadow-xl">
+                🚀 Get Started
               </Link>
-              <button className="inline-flex items-center justify-center px-8 py-4 text-lg font-medium text-white/80 hover:text-white transition-colors">
+              <a href="#features" className="btn btn-lg btn-secondary">
                 Learn more →
-              </button>
+              </a>
             </div>
           </div>
         </section>
@@ -182,7 +193,7 @@ export default function Home() {
         </section>
 
         {/* Features Section */}
-        <section className="px-6 py-20 md:py-32">
+        <section id="features" className="px-6 py-20 md:py-32">
           <div className="max-w-6xl mx-auto">
             <div className="mb-16 text-center">
               <p className="text-sm font-medium text-lime-400 mb-4 tracking-wider uppercase">
@@ -197,7 +208,7 @@ export default function Home() {
             </div>
 
             <div className="grid md:grid-cols-3 gap-6 lg:gap-8 mt-16">
-              <Link href="/camera" className="p-8 rounded-2xl bg-white/5 backdrop-blur-sm border border-white/10 hover:bg-white/10 transition-all">
+              <Link href="/camera" className="p-8 rounded-2xl bg-white/5 backdrop-blur-sm border border-white/10 hover:bg-white/10 transition-all hover:scale-[1.02]">
                 <div className="text-4xl mb-4">📷</div>
                 <h3 className="text-xl font-medium text-white mb-3">
                   Instant item recognition
@@ -207,7 +218,7 @@ export default function Home() {
                 </p>
               </Link>
 
-              <Link href="/voice" className="p-8 rounded-2xl bg-white/5 backdrop-blur-sm border border-white/10 hover:bg-white/10 transition-all">
+              <Link href="/voice" className="p-8 rounded-2xl bg-white/5 backdrop-blur-sm border border-white/10 hover:bg-white/10 transition-all hover:scale-[1.02]">
                 <div className="text-4xl mb-4">💬</div>
                 <h3 className="text-xl font-medium text-white mb-3">
                   Ask about availability
@@ -217,7 +228,7 @@ export default function Home() {
                 </p>
               </Link>
 
-              <Link href="/combined" className="p-8 rounded-2xl bg-gradient-to-br from-lime-500/10 to-emerald-500/10 border-2 border-lime-500/30 hover:border-lime-500/50 transition-all">
+              <Link href="/combined" className="p-8 rounded-2xl bg-gradient-to-br from-lime-500/10 to-emerald-500/10 border-2 border-lime-500/30 hover:border-lime-500/50 transition-all hover:scale-[1.02]">
                 <div className="text-4xl mb-4">🎯</div>
                 <h3 className="text-xl font-medium text-white mb-3">
                   Camera + Voice Assistant
@@ -276,10 +287,7 @@ export default function Home() {
             <h2 className="text-3xl md:text-4xl lg:text-5xl font-medium text-white mb-6">
               Help more people. Waste less. Track smarter.
             </h2>
-            <Link
-              href="/combined"
-              className="inline-flex items-center justify-center px-8 py-4 text-lg font-medium text-slate-900 bg-gradient-to-r from-green-400 via-lime-400 to-yellow-300 rounded-full hover:from-green-500 hover:via-lime-500 hover:to-yellow-400 transition-all shadow-lg hover:shadow-xl"
-            >
+            <Link href="/combined" className="btn btn-lg btn-primary shadow-lg hover:shadow-xl">
               Try the Demo →
             </Link>
           </div>

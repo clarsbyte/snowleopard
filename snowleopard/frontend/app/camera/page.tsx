@@ -186,7 +186,7 @@ export default function CameraPage() {
             <h1 className="text-2xl font-semibold text-white">Donation Scanner</h1>
             <Link
               href="/"
-              className="text-lime-300 hover:text-lime-200 transition-colors"
+              className="btn btn-sm btn-outline"
             >
               ← Back Home
             </Link>
@@ -243,7 +243,7 @@ export default function CameraPage() {
                 <button
                   onClick={takeSnapshot}
                   disabled={!isCameraActive || isProcessing}
-                  className="w-full bg-gradient-to-r from-green-500 via-lime-500 to-yellow-400 hover:from-green-600 hover:via-lime-600 hover:to-yellow-500 disabled:from-gray-700 disabled:to-gray-700 disabled:cursor-not-allowed text-slate-900 font-bold py-4 px-8 rounded-xl transition-all shadow-lg hover:shadow-xl transform hover:scale-[1.02] active:scale-[0.98]"
+                  className="btn btn-lg btn-primary w-full font-semibold"
                 >
                   {isProcessing ? (
                     <span className="flex items-center justify-center gap-2">
@@ -259,7 +259,7 @@ export default function CameraPage() {
                 <button
                   onClick={isCameraActive ? stopCamera : startCamera}
                   disabled={isProcessing}
-                  className="w-full bg-white/5 hover:bg-white/10 disabled:bg-gray-800 disabled:cursor-not-allowed text-white font-medium py-3 px-6 rounded-xl transition-all border border-white/10"
+                  className="btn btn-md btn-outline w-full"
                 >
                   {isCameraActive ? '⏹ Stop Camera' : '▶ Start Camera'}
                 </button>
